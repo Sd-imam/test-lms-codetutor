@@ -19,6 +19,9 @@ const protectedRoutes = [
 const authRoutes = [
   '/signin',
   '/signup',
+  '/activate',
+  '/forgot-password',
+  '/oauth',
 ]
 
 const adminRoutes = [
@@ -107,13 +110,18 @@ export default function proxy(request: NextRequest) {
   // Try to get role from cookie first, then from JWT token
   const userRole = getUserRole(request) || getRoleFromToken(request)
 
-  // Allow public routes (courses, home, etc.)
+  // Allow public routes (courses, home, about, contact, etc.)
   if (!isProtectedRoute(pathname) && !isAuthRoute(pathname)) {
     return NextResponse.next()
   }
 
-  // Redirect authenticated users away from auth pages
-  if (isAuthRoute(pathname) && isAuthenticated) {
+  // Handle auth routes (signin, signup, activate, etc.)
+  if (isAuthRoute(pathname)) {
+    // Allow unauthenticated users to access auth pages
+    if (!isAuthenticated) {
+      return NextResponse.next()
+    }
+    // Redirect authenticated users away from auth pages to dashboard
     const redirectUrl = new URL('/dashboard', request.url)
     return NextResponse.redirect(redirectUrl)
   }
@@ -167,10 +175,9 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public files (public folder)
-     * - API routes (handled separately)
+     * - API routes (MUST be excluded to allow authentication)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
-    '/(api|trpc)(.*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 }
 
